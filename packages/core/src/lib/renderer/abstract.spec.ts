@@ -1,6 +1,9 @@
-import { StubMarbleOperator } from '../operator/operator.stub';
-import { StubMarbleRuntime } from '../runtime/runtime.stub';
-import { EmitableStubMarbleSource } from '../source/source.stub';
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
+import {
+  EmitableStubMarbleSource,
+  StubMarbleOperator,
+  StubMarbleRuntime,
+} from '@rx-marbles/core/testing';
 import { AbstractMarbleRenderer } from './abstract';
 
 class StubAbstractMarbleRenderer extends AbstractMarbleRenderer {

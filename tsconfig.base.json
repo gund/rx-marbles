@@ -15,7 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@rx-marbles/core": ["packages/core/src/index.ts"]
+      "@rx-marbles/*": ["packages/*/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

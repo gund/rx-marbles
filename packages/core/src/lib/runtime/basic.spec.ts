@@ -1,4 +1,5 @@
-import { StubMarbleOperator } from '../operator/operator.stub';
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
+import { StubMarbleOperator } from '@rx-marbles/core/testing';
 import { BasicMarbleRuntime } from './basic';
 
 describe('BasicMarbleRuntime', () => {
