@@ -1,0 +1,44 @@
+{
+  "root": "packages/renderer.text",
+  "sourceRoot": "packages/renderer.text/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/renderer.text",
+        "main": "packages/renderer.text/src/index.ts",
+        "tsConfig": "packages/renderer.text/tsconfig.lib.json",
+        "assets": [
+          {
+            "glob": "**/*.md",
+            "input": "packages/core/",
+            "output": ""
+          },
+          {
+            "glob": "**/package.json",
+            "input": "packages/core/",
+            "output": ""
+          }
+        ]
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/renderer.text/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/renderer.text"],
+      "options": {
+        "jestConfig": "packages/renderer.text/jest.config.js",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": ["lib", "renderer"]
+}

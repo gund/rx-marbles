@@ -1,0 +1,8 @@
+{
+  "name": "@rx-marbles/renderer.text",
+  "version": "0.0.1",
+  "dependencies": {},
+  "peerDependencies": {
+    "@rx-marbles/core": "^0.0.1"
+  }
+}
