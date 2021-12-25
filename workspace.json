@@ -2,6 +2,7 @@
   "version": 2,
   "projects": {
     "core": "packages/core",
-    "renderer.text": "packages/renderer.text"
+    "renderer.text": "packages/renderer.text",
+    "rxjs": "packages/rxjs"
   }
 }
