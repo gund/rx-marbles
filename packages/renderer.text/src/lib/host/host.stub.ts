@@ -5,9 +5,16 @@ export class StubTextHost implements TextHost {
   private buffer = '';
   private colsSizeCallbacks: SubscribableCallback<number>[] = [];
 
-  print = jest.fn((text: string) => (this.buffer += text));
-  clear = jest.fn(() => (this.buffer = ''));
+  print = jest.fn((text: string) => {
+    this.buffer += text;
+  });
+
+  clear = jest.fn(() => {
+    this.buffer = '';
+  });
+
   getColsSize = jest.fn(() => this.colsSize);
+
   getColsSizeWatcher = jest.fn(() => ({
     subscribe: (cb: SubscribableCallback<number>) => {
       this.colsSizeCallbacks.push(cb);
