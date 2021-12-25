@@ -12,7 +12,7 @@ import {
   MarbleSourceMoveEvent,
   MarbleSourceValueEvent,
 } from '@rx-marbles/core';
-import { TextHost } from './text-host';
+import { TextHost } from './host';
 import { moveItemInArray } from './utils';
 
 export interface TextMarbleRendererOptions {

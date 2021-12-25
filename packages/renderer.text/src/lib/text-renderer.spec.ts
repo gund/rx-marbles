@@ -10,7 +10,7 @@ import {
   EmitableStubMarbleTimeline,
   StubMarbleRuntime,
 } from '@rx-marbles/core/testing';
-import { StubTextHost } from './text-host.stub';
+import { StubTextHost } from './host/host.stub';
 import { TextMarbleRenderer } from './text-renderer';
 
 describe('TextMarbleRenderer', () => {

@@ -1,5 +1,5 @@
 import { SubscribableCallback } from '@rx-marbles/core';
-import { TextHost } from './text-host';
+import { TextHost } from './host';
 
 export class StubTextHost implements TextHost {
   private buffer = '';
