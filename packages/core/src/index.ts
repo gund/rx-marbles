@@ -4,4 +4,6 @@ export * from './lib/operator';
 export * from './lib/runtime';
 export * from './lib/renderer';
 
+export * from './lib/error';
 export * from './lib/cancellable';
+export * from './lib/subscribable';

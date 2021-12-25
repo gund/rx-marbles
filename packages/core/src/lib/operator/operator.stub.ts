@@ -1,10 +1,21 @@
+import {
+  StubMarbleSource,
+  EmitableStubMarbleSource,
+} from '../source/source.stub';
 import { MarbleOperator } from './operator';
 
-export class StubMarbleOperator implements MarbleOperator {
+export class StubMarbleOperator
+  extends StubMarbleSource
+  implements MarbleOperator
+{
   getInputs = jest.fn();
   getBounds = jest.fn();
-  getName = jest.fn();
-  getType = jest.fn();
-  getDescription = jest.fn();
-  subscribe = jest.fn();
+}
+
+export class EmitableStubMarbleOperator
+  extends EmitableStubMarbleSource
+  implements MarbleOperator
+{
+  getInputs = jest.fn();
+  getBounds = jest.fn();
 }

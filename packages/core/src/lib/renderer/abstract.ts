@@ -1,4 +1,5 @@
 import { Cancellable } from '../cancellable';
+import { MarbleError } from '../error';
 import { MarbleInput, MarbleOperator, MarbleOutput } from '../operator';
 import { MarbleRuntime } from '../runtime';
 import { MarbleSourceEvent } from '../source';
@@ -50,8 +51,12 @@ export abstract class AbstractMarbleRenderer implements MarbleRenderer {
     disposables.clear();
 
     if (isGlobal) {
-      this.runtimeDisposables.clear();
+      this.doDispose();
     }
+  }
+
+  protected doDispose(): void {
+    this.runtimeDisposables.clear();
   }
 
   protected prepareRuntime(runtime: MarbleRuntime): Set<Cancellable> {
@@ -95,10 +100,6 @@ export abstract class AbstractMarbleRenderer implements MarbleRenderer {
   }
 }
 
-export class AbstractMarbleRendererDisposedError extends Error {
-  static text = 'Unable to use disposed renderer!';
-
-  constructor() {
-    super(AbstractMarbleRendererDisposedError.text);
-  }
+export class AbstractMarbleRendererDisposedError extends MarbleError {
+  static override text = 'Unable to use disposed renderer!';
 }

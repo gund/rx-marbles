@@ -1,13 +1,12 @@
-import { Cancellable } from '../cancellable';
+import { Subscribable, SubscribableCallback } from '../subscribable';
 import { MarbleSourceEvent, MarbleSourceEventType } from './source-event';
 
-export interface MarbleSource<T = MarbleSourceEventType> {
+export interface MarbleSource<T = MarbleSourceEventType>
+  extends Subscribable<MarbleSourceEvent<T>> {
   getName(): string;
   getType(): string;
   getDescription(): string;
-  subscribe(cb: MarbleSourceCallback<T>): Cancellable;
 }
 
-export type MarbleSourceCallback<T = MarbleSourceEventType> = (
-  event: MarbleSourceEvent<T>,
-) => void;
+export type MarbleSourceCallback<T = MarbleSourceEventType> =
+  SubscribableCallback<MarbleSourceEvent<T>>;

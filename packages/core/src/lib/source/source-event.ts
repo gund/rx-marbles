@@ -14,23 +14,25 @@ export type MarbleSourceEvent<T = MarbleSourceEventType> =
   | MarbleSourceValueEvent<T>
   | MarbleSourceMoveEvent<T>;
 
-export interface MarbleSourceStartEvent {
-  kind: MarbleSourceEventKind.Start;
-  time: number;
+export class MarbleSourceStartEvent {
+  kind: MarbleSourceEventKind.Start = MarbleSourceEventKind.Start;
+  constructor(public time: number) {}
 }
 
-export interface MarbleSourceClosedEvent {
-  kind: MarbleSourceEventKind.Closed;
-  time: number;
+export class MarbleSourceClosedEvent {
+  kind: MarbleSourceEventKind.Closed = MarbleSourceEventKind.Closed;
+  constructor(public time: number) {}
 }
 
-export interface MarbleSourceValueEvent<T = MarbleSourceEventType> {
-  kind: MarbleSourceEventKind.Value;
-  time: number;
-  value: T;
+export class MarbleSourceValueEvent<T = MarbleSourceEventType> {
+  kind: MarbleSourceEventKind.Value = MarbleSourceEventKind.Value;
+  constructor(public time: number, public value: T) {}
 }
 
-export interface MarbleSourceMoveEvent<T = MarbleSourceEventType> {
-  kind: MarbleSourceEventKind.Move;
-  event: MarbleSourceValueEvent<T>;
+export class MarbleSourceMoveEvent<T = MarbleSourceEventType> {
+  kind: MarbleSourceEventKind.Move = MarbleSourceEventKind.Move;
+  constructor(
+    public event: MarbleSourceValueEvent<T>,
+    public oldTime: number,
+  ) {}
 }
