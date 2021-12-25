@@ -1,1 +1,1 @@
-export * from './lib/renderer.text';
+export * from './lib/text-renderer';

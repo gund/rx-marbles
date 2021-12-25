@@ -37,6 +37,11 @@
       "options": {
         "jestConfig": "packages/renderer.text/jest.config.js",
         "passWithNoTests": true
+      },
+      "configurations": {
+        "watch": {
+          "watch": true
+        }
       }
     }
   },
