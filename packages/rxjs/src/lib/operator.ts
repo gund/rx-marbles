@@ -1,6 +1,5 @@
 import {
   Cancellable,
-  isSourceTimeline,
   MarbleInputs,
   MarbleOperator,
   MarbleSourceClosedEvent,
@@ -10,7 +9,9 @@ import {
   MarbleSourceStartEvent,
   MarbleSourceValueEvent,
   MarbleTimelineBounds,
+  MarbleTimelineBoundsStrategy,
   SubscribableCallback,
+  WidestMarbleTimelineBoundsStrategy,
 } from '@rx-marbles/core';
 import {
   combineLatest,
@@ -29,6 +30,7 @@ export interface RxjsOperatorMeta {
   type?: string;
   description?: string;
   defaultBounds?: MarbleTimelineBounds;
+  boundsStrategy?: MarbleTimelineBoundsStrategy;
 }
 
 export interface RxjsMarbleOperatorFunction<INPUTS extends unknown[], OUTPUT>
@@ -47,6 +49,12 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
 {
   private static defaultBounds: MarbleTimelineBounds = { start: 0, end: 100 };
 
+  private boundsStrategy =
+    this.operatorMeta?.boundsStrategy ??
+    new WidestMarbleTimelineBoundsStrategy(
+      this.operatorMeta?.defaultBounds ?? RxjsMarbleOperator.defaultBounds,
+    );
+
   private inputObservables?: MarbleInputObservables<INPUTS>;
 
   constructor(
@@ -60,19 +68,7 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
   }
 
   getBounds(): MarbleTimelineBounds {
-    const inputBounds = this.inputs
-      .filter(isSourceTimeline)
-      .map((inputTimeline) => inputTimeline.getBounds());
-
-    if (inputBounds.length) {
-      // Get widest bounds from all inputs timeline bounds
-      return inputBounds.reduce((prevBounds, bounds) => ({
-        start: Math.min(prevBounds.start, bounds.start),
-        end: Math.max(prevBounds.end, bounds.end),
-      }));
-    }
-
-    return this.operatorMeta?.defaultBounds ?? RxjsMarbleOperator.defaultBounds;
+    return this.boundsStrategy.getBounds(this.inputs);
   }
 
   getName(): string {
