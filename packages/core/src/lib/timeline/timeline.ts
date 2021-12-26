@@ -1,13 +1,9 @@
 import { MarbleSource, MarbleSourceEventType } from '../source';
+import { MarbleTimelineBounds } from './bounds';
 
 export interface MarbleTimeline<T = MarbleSourceEventType>
   extends MarbleSource<T> {
   getBounds(): MarbleTimelineBounds;
-}
-
-export interface MarbleTimelineBounds {
-  start: number;
-  end: number;
 }
 
 export function isSourceTimeline<T>(
