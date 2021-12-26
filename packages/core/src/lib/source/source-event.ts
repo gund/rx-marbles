@@ -2,6 +2,7 @@
 export type MarbleSourceEventType = unknown;
 
 export enum MarbleSourceEventKind {
+  Noop,
   Start,
   Closed,
   Value,
@@ -9,10 +10,15 @@ export enum MarbleSourceEventKind {
 }
 
 export type MarbleSourceEvent<T = MarbleSourceEventType> =
+  | MarbleSourceNoopEvent
   | MarbleSourceStartEvent
   | MarbleSourceClosedEvent
   | MarbleSourceValueEvent<T>
   | MarbleSourceMoveEvent<T>;
+
+export class MarbleSourceNoopEvent {
+  kind: MarbleSourceEventKind.Noop = MarbleSourceEventKind.Noop;
+}
 
 export class MarbleSourceStartEvent {
   kind: MarbleSourceEventKind.Start = MarbleSourceEventKind.Start;

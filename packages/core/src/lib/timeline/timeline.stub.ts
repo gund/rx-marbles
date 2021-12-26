@@ -1,19 +1,20 @@
+import { MarbleSourceEventType } from '../source';
 import {
   EmitableStubMarbleSource,
   StubMarbleSource,
 } from '../source/source.stub';
 import { MarbleTimeline } from './timeline';
 
-export class StubMarbleTimeline
-  extends StubMarbleSource
-  implements MarbleTimeline
+export class StubMarbleTimeline<T = MarbleSourceEventType>
+  extends StubMarbleSource<T>
+  implements MarbleTimeline<T>
 {
   getBounds = jest.fn();
 }
 
-export class EmitableStubMarbleTimeline
-  extends EmitableStubMarbleSource
-  implements MarbleTimeline
+export class EmitableStubMarbleTimeline<T = MarbleSourceEventType>
+  extends EmitableStubMarbleSource<T>
+  implements MarbleTimeline<T>
 {
   getBounds = jest.fn();
 }
