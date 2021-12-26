@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "dependencies": {},
   "peerDependencies": {
-    "@rx-marbles/core": "^0.0.1"
+    "@rx-marbles/core": "^0.0.1",
+    "rxjs": "^7.0.0"
   }
 }
