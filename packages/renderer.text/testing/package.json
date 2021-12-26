@@ -1,0 +1,7 @@
+{
+  "name": "@rx-marbles/renderer.text/testing",
+  "version": "0.0.1",
+  "dependencies": {},
+  "main": "./src/index.js",
+  "typings": "./src/index.d.ts"
+}
