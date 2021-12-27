@@ -3,12 +3,12 @@ import { map, pipe } from 'rxjs';
 import { RxjsMarbleOperator } from '../operator';
 
 export class DelayMarbleOperator<T> extends RxjsMarbleOperator<[T], T> {
-  constructor(input: MarbleInput<T>, delayTime: number) {
+  constructor(input: MarbleInput<T>, private delayTime: number) {
     super(
       pipe(
         map(({ events: [event] }) => ({
           ...event,
-          time: Math.min(event.time + delayTime, this.getBounds().end),
+          time: Math.min(event.time + this.delayTime, this.getBounds().end),
         })),
       ),
       [input],
@@ -18,5 +18,10 @@ export class DelayMarbleOperator<T> extends RxjsMarbleOperator<[T], T> {
         type: '(a) => (delayed) a',
       },
     );
+  }
+
+  setDelay(delayTime: number) {
+    this.delayTime = delayTime;
+    this.restartEvents();
   }
 }

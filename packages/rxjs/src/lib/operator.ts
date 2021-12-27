@@ -21,6 +21,11 @@ import {
   Observable,
   OperatorFunction,
   partition,
+  sample,
+  scan,
+  share,
+  Subject,
+  switchAll,
   zip,
 } from 'rxjs';
 import { RxjsCancellable } from './cancellable';
@@ -73,6 +78,7 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
     );
 
   private inputObservables?: MarbleInputObservables<INPUTS>;
+  private restart$ = new Subject<void>();
 
   constructor(
     protected operatorFn: RxjsMarbleOperatorFunction<INPUTS, OUTPUT>,
@@ -111,11 +117,32 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
     return new RxjsCancellable(subscription);
   }
 
+  protected restartEvents() {
+    this.restart$.next();
+  }
+
   private getInputObservables() {
     if (!this.inputObservables) {
-      this.inputObservables = this.inputs.map(
-        inputToObservable,
-      ) as MarbleInputObservables<INPUTS>;
+      this.inputObservables = this.inputs
+        .map(inputToObservable)
+        .map((input$) => input$.pipe(share()))
+        .map((input$) =>
+          merge(
+            input$,
+            input$.pipe(
+              scan(
+                (events, event) =>
+                  // Clear events on start event
+                  event.kind === MarbleSourceEventKind.Start
+                    ? [event]
+                    : [event, ...events],
+                [] as MarbleSourceEvent[],
+              ),
+              sample(this.restart$),
+              switchAll(),
+            ),
+          ),
+        ) as MarbleInputObservables<INPUTS>;
     }
 
     return this.inputObservables;
