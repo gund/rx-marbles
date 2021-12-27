@@ -42,3 +42,9 @@ export class MarbleSourceMoveEvent<T = MarbleSourceEventType> {
     public oldTime: number,
   ) {}
 }
+
+export function isMarbleSourceEvent<T>(
+  obj: unknown,
+): obj is MarbleSourceEvent<T> {
+  return typeof obj === 'object' && !!obj && 'kind' in obj;
+}
