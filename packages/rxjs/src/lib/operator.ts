@@ -79,6 +79,7 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
 
   private inputObservables?: MarbleInputObservables<INPUTS>;
   private restart$ = new Subject<void>();
+  private bounds?: MarbleTimelineBounds;
 
   constructor(
     protected operatorFn: RxjsMarbleOperatorFunction<INPUTS, OUTPUT>,
@@ -91,7 +92,11 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
   }
 
   getBounds(): MarbleTimelineBounds {
-    return this.boundsStrategy.getBounds(this.inputs);
+    if (!this.bounds) {
+      this.bounds = this.boundsStrategy.getBounds(this.inputs);
+    }
+
+    return this.bounds;
   }
 
   getName(): string {
