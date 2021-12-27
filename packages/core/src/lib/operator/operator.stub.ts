@@ -1,6 +1,6 @@
 import {
-  StubMarbleSource,
   EmitableStubMarbleSource,
+  StubMarbleSource,
 } from '../source/source.stub';
 import { MarbleOperator } from './operator';
 
