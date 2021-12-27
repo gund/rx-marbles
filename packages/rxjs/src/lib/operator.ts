@@ -1,5 +1,6 @@
 import {
   Cancellable,
+  isMarbleSourceEvent,
   MarbleInputs,
   MarbleOperator,
   MarbleSourceClosedEvent,
@@ -34,7 +35,19 @@ export interface RxjsOperatorMeta {
 }
 
 export interface RxjsMarbleOperatorFunction<INPUTS extends unknown[], OUTPUT>
-  extends OperatorFunction<INPUTS, OUTPUT> {}
+  extends OperatorFunction<
+    RxjsOperatorInput<INPUTS>,
+    RxjsOperatorOutput<OUTPUT>
+  > {}
+
+export interface RxjsOperatorInput<INPUTS extends unknown[]> {
+  inputs: INPUTS;
+  events: MarbleSourceEvents<INPUTS>;
+}
+
+export type RxjsOperatorOutput<OUTPUT> =
+  | OUTPUT
+  | MarbleSourceValueEvent<OUTPUT>;
 
 export type MarbleSourceEvents<INPUTS extends unknown[]> = {
   [I in keyof INPUTS]: MarbleSourceEvent<INPUTS[I]>;
@@ -117,24 +130,28 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
         values$.pipe(
           map(
             (values) =>
-              values.map(
-                (value) => (value as MarbleSourceValueEvent).value,
-              ) as INPUTS,
+              ({
+                inputs: values.map(
+                  (value) => (value as MarbleSourceValueEvent).value,
+                ),
+                events: values,
+              } as RxjsOperatorInput<INPUTS>),
           ),
           this.operatorFn,
         ),
       ).pipe(
-        map(
-          ([values, output]) =>
-            new MarbleSourceValueEvent(
-              Math.max(
-                ...values.map(
-                  (value) => (value as MarbleSourceValueEvent).time,
-                ),
-              ),
-              output,
+        map(([values, output]) => {
+          if (isMarbleSourceEvent(output)) {
+            return output;
+          }
+
+          return new MarbleSourceValueEvent(
+            Math.max(
+              ...values.map((value) => (value as MarbleSourceValueEvent).time),
             ),
-        ),
+            output,
+          );
+        }),
       );
 
       const events$ = nonValues$.pipe(

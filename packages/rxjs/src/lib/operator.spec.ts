@@ -10,22 +10,29 @@ import {
   EmitableStubMarbleSource,
   EmitableStubMarbleTimeline,
 } from '@rx-marbles/core/testing';
-import { map, OperatorFunction } from 'rxjs';
-import { RxjsMarbleOperator } from './operator';
+import { map } from 'rxjs';
+import {
+  RxjsMarbleOperator,
+  RxjsMarbleOperatorFunction,
+  RxjsOperatorInput,
+  RxjsOperatorOutput,
+} from './operator';
 
 describe('RxjsMarbleOperator', () => {
   class StubOperatorFn {
     fn = jest
-      .fn<MarbleSourceEventType, [MarbleSourceEventType[]]>()
+      .fn<
+        RxjsOperatorOutput<MarbleSourceEventType>,
+        [RxjsOperatorInput<MarbleSourceEventType[]>]
+      >()
       .mockReturnValue(this.outputValue);
 
-    constructor(private outputValue?: MarbleSourceEventType) {}
+    constructor(
+      private outputValue?: RxjsOperatorOutput<MarbleSourceEventType>,
+    ) {}
 
-    getOperator(): OperatorFunction<
-      MarbleSourceEventType[],
-      MarbleSourceEventType
-    > {
-      const stubOperatorFn: OperatorFunction<
+    getOperator() {
+      const stubOperatorFn: RxjsMarbleOperatorFunction<
         MarbleSourceEventType[],
         MarbleSourceEventType
       > = (source$) => source$.pipe(map((inputs) => this.fn(inputs)));
@@ -61,7 +68,13 @@ describe('RxjsMarbleOperator', () => {
 
       input2.emit(new MarbleSourceValueEvent(1, 'value2'));
 
-      expect(operatorFn.fn).toHaveBeenCalledWith(['value1', 'value2']);
+      expect(operatorFn.fn).toHaveBeenCalledWith({
+        inputs: ['value1', 'value2'],
+        events: [
+          new MarbleSourceValueEvent(0, 'value1'),
+          new MarbleSourceValueEvent(1, 'value2'),
+        ],
+      });
 
       sub.cancel();
     });
@@ -79,17 +92,41 @@ describe('RxjsMarbleOperator', () => {
       input1.emit(new MarbleSourceValueEvent(0, 'value1'));
       input2.emit(new MarbleSourceValueEvent(0, 'value2'));
 
-      expect(operatorFn.fn).toHaveBeenCalledWith(['value1', 'value2']);
+      expect(operatorFn.fn).toHaveBeenCalledWith({
+        inputs: ['value1', 'value2'],
+        events: [
+          new MarbleSourceValueEvent(0, 'value1'),
+          new MarbleSourceValueEvent(0, 'value2'),
+        ],
+      });
 
       input1.emit(new MarbleSourceValueEvent(1, 'value3'));
-      expect(operatorFn.fn).toHaveBeenCalledWith(['value3', 'value2']);
+      expect(operatorFn.fn).toHaveBeenCalledWith({
+        inputs: ['value3', 'value2'],
+        events: [
+          new MarbleSourceValueEvent(1, 'value3'),
+          new MarbleSourceValueEvent(0, 'value2'),
+        ],
+      });
 
       input2.emit(new MarbleSourceValueEvent(2, 'value4'));
-      expect(operatorFn.fn).toHaveBeenCalledWith(['value3', 'value4']);
+      expect(operatorFn.fn).toHaveBeenCalledWith({
+        inputs: ['value3', 'value4'],
+        events: [
+          new MarbleSourceValueEvent(1, 'value3'),
+          new MarbleSourceValueEvent(2, 'value4'),
+        ],
+      });
 
       input1.emit(new MarbleSourceValueEvent(3, 'value5'));
       input2.emit(new MarbleSourceValueEvent(3, 'value6'));
-      expect(operatorFn.fn).toHaveBeenCalledWith(['value5', 'value6']);
+      expect(operatorFn.fn).toHaveBeenCalledWith({
+        inputs: ['value5', 'value6'],
+        events: [
+          new MarbleSourceValueEvent(3, 'value5'),
+          new MarbleSourceValueEvent(3, 'value6'),
+        ],
+      });
 
       sub.cancel();
     });
@@ -115,6 +152,30 @@ describe('RxjsMarbleOperator', () => {
       expect(callback).toHaveBeenCalledWith(
         new MarbleSourceValueEvent(1, 'output'),
       );
+
+      sub.cancel();
+    });
+
+    it('should emit output with custom event when is called', () => {
+      const { callback, input1, input2 } = setup();
+      const customEvent = new MarbleSourceValueEvent(2, 'custom');
+      const operatorFn = new StubOperatorFn(customEvent);
+      const operator = new RxjsMarbleOperator(operatorFn.getOperator(), [
+        input1,
+        input2,
+      ]);
+
+      const sub = operator.subscribe(callback);
+
+      expect(callback).not.toHaveBeenCalled();
+
+      input1.emit(new MarbleSourceValueEvent(0, 'value1'));
+
+      expect(callback).not.toHaveBeenCalled();
+
+      input2.emit(new MarbleSourceValueEvent(1, 'value2'));
+
+      expect(callback).toHaveBeenCalledWith(customEvent);
 
       sub.cancel();
     });
