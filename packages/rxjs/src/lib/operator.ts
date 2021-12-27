@@ -42,7 +42,7 @@ export interface RxjsMarbleOperatorFunction<INPUTS extends unknown[], OUTPUT>
 
 export interface RxjsOperatorInput<INPUTS extends unknown[]> {
   inputs: INPUTS;
-  events: MarbleSourceEvents<INPUTS>;
+  events: MarbleSourceValueEvents<INPUTS>;
 }
 
 export type RxjsOperatorOutput<OUTPUT> =
@@ -51,6 +51,10 @@ export type RxjsOperatorOutput<OUTPUT> =
 
 export type MarbleSourceEvents<INPUTS extends unknown[]> = {
   [I in keyof INPUTS]: MarbleSourceEvent<INPUTS[I]>;
+};
+
+export type MarbleSourceValueEvents<INPUTS extends unknown[]> = {
+  [I in keyof INPUTS]: MarbleSourceValueEvent<INPUTS[I]>;
 };
 
 export type MarbleInputObservables<INPUTS extends unknown[]> = {
