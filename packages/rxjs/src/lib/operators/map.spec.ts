@@ -1,35 +1,32 @@
+import { MarbleInputs } from '@rx-marbles/core';
 import {
-  MarbleSourceClosedEvent,
-  MarbleSourceStartEvent,
-  MarbleSourceValueEvent,
-} from '@rx-marbles/core';
-import { EmitableStubMarbleTimeline } from '@rx-marbles/core/testing';
+  MarbleOperatorFactory,
+  MarbleOperatorTester,
+} from '@rx-marbles/core/testing';
 import { MapMarbleOperator } from './map';
 
 describe('MapMarbleOperator', () => {
+  class MapOperatorFactory<I extends unknown[], O>
+    implements MarbleOperatorFactory<I>
+  {
+    constructor(private mapFn: (inputs: I) => O) {}
+
+    create(inputs: MarbleInputs<I>) {
+      return new MapMarbleOperator(inputs, this.mapFn);
+    }
+  }
+
   it('should apply map function to input events', () => {
-    const callback = jest.fn();
-    const input1 = new EmitableStubMarbleTimeline<string>();
-    input1.getName.mockReturnValue('Letters');
-    input1.getBounds.mockReturnValue({ start: 0, end: 10 });
-    const mapCharCodeOperator = new MapMarbleOperator([input1], ([input1]) =>
-      input1.charCodeAt(0),
+    const operatorFactory = new MapOperatorFactory(([input1]: [string]) =>
+      input1.charCodeAt(0).toString(),
     );
+    const mapTester = new MarbleOperatorTester({
+      operatorFactory,
+      inputs: { letters: { name: 'Letters' } },
+    });
 
-    const sub = mapCharCodeOperator.subscribe(callback);
+    mapTester.emitInputs({ letters: '^(a)-(b)-(c)-X' });
 
-    input1.emit(new MarbleSourceStartEvent(0));
-
-    input1.emit(new MarbleSourceValueEvent(0, 'a'));
-    input1.emit(new MarbleSourceValueEvent(5, 'b'));
-    input1.emit(new MarbleSourceValueEvent(7, 'c'));
-
-    input1.emit(new MarbleSourceClosedEvent(10));
-
-    expect(callback).toHaveBeenCalledWith(new MarbleSourceValueEvent(0, 97));
-    expect(callback).toHaveBeenCalledWith(new MarbleSourceValueEvent(5, 98));
-    expect(callback).toHaveBeenCalledWith(new MarbleSourceValueEvent(7, 99));
-
-    sub.cancel();
+    mapTester.expectOutput('^(97)-(98)-(99)-X');
   });
 });

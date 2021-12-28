@@ -15,20 +15,20 @@ import {
   RxjsMarbleOperator,
   RxjsMarbleOperatorFunction,
   RxjsOperatorInput,
-  RxjsOperatorOutput,
+  RxjsOperatorValueOutput,
 } from './operator';
 
 describe('RxjsMarbleOperator', () => {
   class StubOperatorFn {
     fn = jest
       .fn<
-        RxjsOperatorOutput<MarbleSourceEventType>,
+        RxjsOperatorValueOutput<MarbleSourceEventType>,
         [RxjsOperatorInput<MarbleSourceEventType[]>]
       >()
       .mockReturnValue(this.outputValue);
 
     constructor(
-      private outputValue?: RxjsOperatorOutput<MarbleSourceEventType>,
+      private outputValue?: RxjsOperatorValueOutput<MarbleSourceEventType>,
     ) {}
 
     getOperator() {

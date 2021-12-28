@@ -31,26 +31,35 @@ import {
 import { RxjsCancellable } from './cancellable';
 import { inputToObservable } from './input-observable';
 
-export interface RxjsOperatorMeta {
+export interface RxjsOperatorMeta<INPUTS extends unknown[]> {
   name?: string;
   type?: string;
   description?: string;
   defaultBounds?: MarbleTimelineBounds;
   boundsStrategy?: MarbleTimelineBoundsStrategy;
+  eventsMapper?: RxjsMarbleEventsMapper<INPUTS>;
 }
 
 export interface RxjsMarbleOperatorFunction<INPUTS extends unknown[], OUTPUT>
   extends OperatorFunction<
     RxjsOperatorInput<INPUTS>,
-    RxjsOperatorOutput<OUTPUT>
+    RxjsOperatorValueOutput<OUTPUT>
   > {}
+
+export interface RxjsMarbleEventsMapper<INPUTS extends unknown[]>
+  extends Function {
+  (
+    event: MarbleSourceEvent,
+    inputs: MarbleSourceEvents<INPUTS>,
+  ): MarbleSourceEvent;
+}
 
 export interface RxjsOperatorInput<INPUTS extends unknown[]> {
   inputs: INPUTS;
   events: MarbleSourceValueEvents<INPUTS>;
 }
 
-export type RxjsOperatorOutput<OUTPUT> =
+export type RxjsOperatorValueOutput<OUTPUT> =
   | OUTPUT
   | MarbleSourceValueEvent<OUTPUT>;
 
@@ -80,11 +89,12 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
   private inputObservables?: MarbleInputObservables<INPUTS>;
   private restart$ = new Subject<void>();
   private bounds?: MarbleTimelineBounds;
+  private eventsMapper = this.operatorMeta?.eventsMapper;
 
   constructor(
     protected operatorFn: RxjsMarbleOperatorFunction<INPUTS, OUTPUT>,
     private inputs: MarbleInputs<INPUTS>,
-    private operatorMeta?: RxjsOperatorMeta,
+    private operatorMeta?: RxjsOperatorMeta<INPUTS>,
   ) {}
 
   getInputs(): MarbleInputs<INPUTS> {
@@ -140,7 +150,7 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
                   // Clear events on start event
                   event.kind === MarbleSourceEventKind.Start
                     ? [event]
-                    : [event, ...events],
+                    : [...events, event],
                 [] as MarbleSourceEvent[],
               ),
               sample(this.restart$),
@@ -192,22 +202,22 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
 
       const events$ = nonValues$.pipe(
         map((inputs) => {
+          let event: MarbleSourceEvent<OUTPUT> = new MarbleSourceNoopEvent();
+
           if (
             inputs.every((input) => input.kind === MarbleSourceEventKind.Start)
           ) {
-            return new MarbleSourceStartEvent(
+            event = new MarbleSourceStartEvent(
               Math.max(
                 ...inputs.map(
                   (input) => (input as MarbleSourceStartEvent).time,
                 ),
               ),
             );
-          }
-
-          if (
+          } else if (
             inputs.every((input) => input.kind === MarbleSourceEventKind.Closed)
           ) {
-            return new MarbleSourceClosedEvent(
+            event = new MarbleSourceClosedEvent(
               Math.max(
                 ...inputs.map(
                   (input) => (input as MarbleSourceClosedEvent).time,
@@ -216,7 +226,14 @@ export class RxjsMarbleOperator<INPUTS extends unknown[], OUTPUT>
             );
           }
 
-          return new MarbleSourceNoopEvent();
+          if (this.eventsMapper) {
+            event = this.eventsMapper(
+              event,
+              inputs,
+            ) as MarbleSourceEvent<OUTPUT>;
+          }
+
+          return event;
         }),
       );
 
