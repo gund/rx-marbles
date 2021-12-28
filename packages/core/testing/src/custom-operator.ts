@@ -90,7 +90,7 @@ export interface CustomMarbleOperatorCtor<
 export class CustomMarbleOperatorFactory<
   INPUTS extends unknown[] = MarbleSourceEventType[],
   OUTPUT = MarbleSourceEventType,
-> implements MarbleOperatorFactory<INPUTS, OUTPUT>
+> implements MarbleOperatorFactory<INPUTS>
 {
   constructor(
     private options: CustomMarbleOperatorOptions,

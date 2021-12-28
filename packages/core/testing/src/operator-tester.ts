@@ -4,16 +4,18 @@ import {
   MarbleOperator,
   MarbleSourceClosedEvent,
   MarbleSourceEvent,
+  MarbleSourceEventKind,
   MarbleSourceEventType,
   MarbleSourceNoopEvent,
   MarbleSourceStartEvent,
   MarbleSourceValueEvent,
-  MarbleTimeline,
   MarbleTimelineBounds,
 } from '@rx-marbles/core';
 import {
   ClosedMarbleEventToken,
   EmitableStubMarbleTimeline,
+  GroupEndMarbleEventToken,
+  GroupStartMarbleEventToken,
   MarbleEventToken,
   MarbleEventTokenizer,
   StartMarbleEventToken,
@@ -22,18 +24,22 @@ import {
 
 export interface MarbleOperatorTesterOptions<
   INPUTS extends unknown[],
-  OUTPUT,
+  OPERATOR extends MarbleOperator,
   META extends Record<string, unknown>,
 > {
-  operatorFactory: MarbleOperatorFactory<INPUTS, OUTPUT>;
+  operatorFactory: MarbleOperatorFactory<INPUTS, OPERATOR>;
   inputs: MarbleOperatorInputMetas<META>;
   bounds?: MarbleTimelineBounds;
   frameTime?: number;
   noDisposeAfterExpect?: boolean;
+  logEvents?: boolean;
 }
 
-export interface MarbleOperatorFactory<INPUTS extends unknown[], OUTPUT> {
-  create(inputs: MarbleInputs<INPUTS>): MarbleOperator<INPUTS, OUTPUT>;
+export interface MarbleOperatorFactory<
+  INPUTS extends unknown[],
+  OPERATOR extends MarbleOperator = MarbleOperator,
+> {
+  create(inputs: MarbleInputs<INPUTS>): OPERATOR;
 }
 
 export type MarbleOperatorInputMetas<META extends Record<string, unknown>> = {
@@ -53,6 +59,7 @@ export type TestInputEvents<META extends Record<string, unknown>> = {
 export class MarbleOperatorTester<
   INPUTS extends unknown[] = MarbleSourceEventType[],
   OUTPUT = MarbleSourceEventType,
+  OPERATOR extends MarbleOperator = MarbleOperator<INPUTS, OUTPUT>,
   META extends Record<string, unknown> = Record<string, unknown>,
 > {
   private bounds = this.options.bounds ?? { start: 0, end: 100 };
@@ -65,33 +72,51 @@ export class MarbleOperatorTester<
   private subscription?: Cancellable;
 
   constructor(
-    private options: MarbleOperatorTesterOptions<INPUTS, OUTPUT, META>,
+    private options: MarbleOperatorTesterOptions<INPUTS, OPERATOR, META>,
   ) {}
 
   emitInputs(inputsEventsStr: Partial<TestInputEvents<META>>): void {
     this.initOperator();
 
-    Object.keys(inputsEventsStr)
+    const inputTokens = Object.keys(inputsEventsStr)
       .filter((key) => !!inputsEventsStr[key])
-      .forEach((key) => {
+      .map((key) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const inputEventsStr = inputsEventsStr[key]!;
-        const input = this.metaToInput[key];
         const tokens = this.strToTokens(inputEventsStr);
-
-        this.updateBounds(input, tokens.length);
-
-        const events = this.tokensToEvents(tokens, input);
-
-        events.forEach((event) => input.emit(event));
+        return { key, tokens };
       });
+
+    const maxTokens = Math.max(...inputTokens.map((e) => e.tokens.length));
+    this.updateBounds(maxTokens);
+
+    inputTokens.forEach((inputEvent) => {
+      const input = this.getInput(inputEvent.key);
+      const events = this.tokensToEvents(inputEvent.tokens);
+
+      if (this.options.logEvents) {
+        console.log(
+          `Input events (${inputEvent.key}) (${events.length})`,
+          events,
+        );
+      }
+
+      events.forEach((event) => input.emit(event));
+    });
   }
 
   expectOutput(eventsStr: string): void {
-    const events = this.strToEvents(eventsStr, this.operator);
+    const expectedEvents = this.strToEvents(eventsStr);
+    const actualEvents: MarbleSourceEvent[] =
+      this.outptuCallback.mock.calls.map(([event]) => event);
 
-    events.forEach((event) =>
-      expect(this.outptuCallback).toHaveBeenCalledWith(event),
+    if (this.options.logEvents) {
+      console.log(`Expected events (${expectedEvents.length})`, expectedEvents);
+      console.log(`Output events (${actualEvents.length})`, actualEvents);
+    }
+
+    expectedEvents.forEach((expectedEvent) =>
+      expect(actualEvents).toContainEqual(expectedEvent),
     );
 
     if (!this.options.noDisposeAfterExpect) {
@@ -103,7 +128,7 @@ export class MarbleOperatorTester<
     return this.metaToInput[name as string];
   }
 
-  getOperator() {
+  getOperator(): OPERATOR {
     return this.operator;
   }
 
@@ -122,17 +147,10 @@ export class MarbleOperatorTester<
     }
   }
 
-  private updateBounds(input: EmitableStubMarbleTimeline, eventsCount: number) {
-    if (this.options.bounds) {
-      return;
+  private updateBounds(maxEvents: number) {
+    if (!this.options.bounds) {
+      this.bounds.end = maxEvents * this.getFrameTime();
     }
-
-    const frameTime = this.getFrameTime(eventsCount);
-
-    input.getBounds.mockReturnValue({
-      start: 0,
-      end: frameTime * eventsCount,
-    });
   }
 
   private convertMetaToInputs(metas: MarbleOperatorInputMetas<META>) {
@@ -158,47 +176,50 @@ export class MarbleOperatorTester<
     return input;
   }
 
-  private strToEvents(
-    eventsStr: string,
-    timeline?: MarbleTimeline,
-  ): MarbleSourceEvent[] {
-    const tokens = this.strToTokens(eventsStr);
-    return this.tokensToEvents(tokens, timeline);
+  private strToEvents(eventsStr: string): MarbleSourceEvent[] {
+    const tokens = Array.from(new MarbleEventTokenizer(eventsStr));
+    return this.tokensToEvents(tokens);
   }
 
   private strToTokens(eventsStr: string) {
     return Array.from(new MarbleEventTokenizer(eventsStr));
   }
 
-  private tokensToEvents(
-    tokens: MarbleEventToken[],
-    timeline?: MarbleTimeline,
-  ) {
-    const frameTime = this.getFrameTime(tokens.length, timeline?.getBounds());
-    let time = 0;
+  private tokensToEvents(tokens: MarbleEventToken[]) {
+    const frameTime = this.getFrameTime();
+    let time = 0,
+      isInGroup = false;
 
-    return tokens.map((token) => {
-      let event: MarbleSourceEvent;
+    return tokens
+      .map((token) => {
+        let event: MarbleSourceEvent;
 
-      if (token instanceof StartMarbleEventToken) {
-        event = new MarbleSourceStartEvent(time);
-      } else if (token instanceof ClosedMarbleEventToken) {
-        event = new MarbleSourceClosedEvent(time);
-      } else if (token instanceof ValueMarbleEventToken) {
-        event = new MarbleSourceValueEvent(time, token.value);
-      } else {
-        event = new MarbleSourceNoopEvent();
-      }
+        if (token instanceof StartMarbleEventToken) {
+          event = new MarbleSourceStartEvent(time);
+        } else if (token instanceof ClosedMarbleEventToken) {
+          event = new MarbleSourceClosedEvent(time);
+        } else if (token instanceof ValueMarbleEventToken) {
+          event = new MarbleSourceValueEvent(time, token.value);
+        } else {
+          event = new MarbleSourceNoopEvent();
+        }
 
-      time += frameTime;
+        if (token instanceof GroupStartMarbleEventToken) {
+          isInGroup = true;
+        } else if (token instanceof GroupEndMarbleEventToken) {
+          isInGroup = false;
+        }
 
-      return event;
-    });
+        if (!isInGroup) {
+          time += frameTime;
+        }
+
+        return event;
+      })
+      .filter((event) => event.kind !== MarbleSourceEventKind.Noop);
   }
 
-  private getFrameTime(eventsCount: number, bounds?: MarbleTimelineBounds) {
-    return bounds
-      ? Math.ceil(Math.abs(bounds.end - bounds.start) / eventsCount)
-      : this.options.frameTime ?? 10;
+  private getFrameTime() {
+    return this.options.frameTime ?? 10;
   }
 }

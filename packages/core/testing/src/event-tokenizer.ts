@@ -6,6 +6,8 @@ export interface MarbleEventTokens {
   Closed: string;
   ValueStart: string;
   ValueEnd: string;
+  GroupStart: string;
+  GroupEnd: string;
   // Reverse char lookups
   [char: string]: string;
 }
@@ -17,6 +19,8 @@ export class MarbleEventTokenizer implements Iterable<MarbleEventToken> {
     [this.tokenChars.Closed]: () => this.consumeTokenClosed(),
     [this.tokenChars.ValueStart]: () => this.consumeTokenValueStart(),
     [this.tokenChars.ValueEnd]: () => this.consumeTokenValueEnd(),
+    [this.tokenChars.GroupStart]: () => this.consumeTokenGroupStart(),
+    [this.tokenChars.GroupEnd]: () => this.consumeTokenGroupEnd(),
   };
 
   protected currentIndex = 0;
@@ -33,7 +37,17 @@ export class MarbleEventTokenizer implements Iterable<MarbleEventToken> {
       return undefined;
     }
 
-    return this.consumeToken();
+    try {
+      return this.consumeToken();
+    } catch (error) {
+      throw new InputEventTokenizerError({
+        error: String(error),
+        input:
+          error instanceof EventTokenizerError
+            ? error.getErroredInput(this.eventsStr)
+            : this.eventsStr,
+      });
+    }
   }
 
   *[Symbol.iterator](): Iterator<MarbleEventToken, void, void> {
@@ -51,7 +65,7 @@ export class MarbleEventTokenizer implements Iterable<MarbleEventToken> {
     if (end === -1) {
       throw new ExpectedTokenEventTokenizerError({
         token: tokenChar,
-        index: String(start),
+        index: start,
       });
     }
 
@@ -75,7 +89,7 @@ export class MarbleEventTokenizer implements Iterable<MarbleEventToken> {
     if (char in this.charToToken === false) {
       throw new UnexpectedCharEventTokenizerError({
         char: this.eventsStr[this.consumedIndex],
-        index: String(this.consumedIndex),
+        index: this.consumedIndex,
       });
     }
 
@@ -112,12 +126,22 @@ export class MarbleEventTokenizer implements Iterable<MarbleEventToken> {
 
     if (!value) {
       throw new ExpectedValueEventTokenizerError({
-        index: String(this.currentIndex),
+        index: this.currentIndex,
       });
     }
 
     this.currentIndex++;
     return new ValueMarbleEventToken(value, this.getCurrentPos());
+  }
+
+  protected consumeTokenGroupStart() {
+    this.currentIndex++;
+    return new GroupStartMarbleEventToken(this.getCurrentPos());
+  }
+
+  protected consumeTokenGroupEnd() {
+    this.currentIndex++;
+    return new GroupEndMarbleEventToken(this.getCurrentPos());
   }
 
   protected getCurrentPos(): MarbleEventTokenPos {
@@ -131,6 +155,8 @@ export enum MarbleEventTokenChar {
   Closed = 'X',
   ValueStart = '(',
   ValueEnd = ')',
+  GroupStart = '{',
+  GroupEnd = '}',
 }
 
 export interface MarbleEventTokenPos {
@@ -152,6 +178,9 @@ export class StartMarbleEventToken extends MarbleEventToken {}
 
 export class ClosedMarbleEventToken extends MarbleEventToken {}
 
+export class GroupStartMarbleEventToken extends MarbleEventToken {}
+export class GroupEndMarbleEventToken extends MarbleEventToken {}
+
 export class ValueMarbleEventToken extends MarbleEventToken {
   constructor(public value: string, pos: MarbleEventTokenPos) {
     super(pos);
@@ -160,16 +189,32 @@ export class ValueMarbleEventToken extends MarbleEventToken {
 
 export class EventTokenizerError extends MarbleError {
   static override text = 'EventTokenizerError';
+
+  getErroredInput(input: string) {
+    return input;
+  }
+}
+
+function getErroredInputIndex(this: EventTokenizerError, input: string) {
+  const idx = Number(this.messageData?.['index']);
+  return `${input.slice(0, idx)}>>>${input.slice(idx)}`;
+}
+
+export class InputEventTokenizerError extends EventTokenizerError {
+  static override text = '${error} in ${input}';
 }
 
 export class UnexpectedCharEventTokenizerError extends EventTokenizerError {
   static override text = 'Unexpected character "${char}" at index ${index}';
+  override getErroredInput = getErroredInputIndex;
 }
 
 export class ExpectedTokenEventTokenizerError extends EventTokenizerError {
   static override text = 'Expected token "${token}" at index ${index}';
+  override getErroredInput = getErroredInputIndex;
 }
 
 export class ExpectedValueEventTokenizerError extends EventTokenizerError {
   static override text = 'Expected value at index ${index}';
+  override getErroredInput = getErroredInputIndex;
 }
