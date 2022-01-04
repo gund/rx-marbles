@@ -254,7 +254,7 @@ describe('TextMarbleRenderer', () => {
 
     // Input 2 has bounds
     expect(host.getBuffer()).toContain(
-      '|(V21)-------------------(V22)--------------------------------------------(V23)--------------------|',
+      '|(V21)--------------(V22)--------------------------------------------(V23)-------------------------|',
     );
     // Output has bounds
     expect(host.getBuffer()).toContain(

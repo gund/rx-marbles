@@ -269,8 +269,8 @@ export class TextMarbleRenderer extends AbstractMarbleRenderer {
           }
 
           if (length < 0) {
-            length = 0;
             overflowLength += Math.abs(length);
+            length = 0;
           }
 
           return TS.repeat(length);
