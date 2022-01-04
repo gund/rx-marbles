@@ -1,7 +1,5 @@
-import {
-  IdentityMarbleOperatorFactory,
-  MarbleOperatorTester,
-} from '@rx-marbles/core/testing';
+import { IdentityMarbleOperatorFactory } from './identity-operator';
+import { MarbleOperatorTester } from './operator-tester';
 
 describe('MarbleOperatorTester', () => {
   it('should assert output events from input events', () => {

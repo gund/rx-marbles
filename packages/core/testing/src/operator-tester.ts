@@ -1,26 +1,16 @@
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import {
   Cancellable,
   MarbleInputs,
   MarbleOperator,
-  MarbleSourceClosedEvent,
   MarbleSourceEvent,
   MarbleSourceEventKind,
   MarbleSourceEventType,
-  MarbleSourceNoopEvent,
-  MarbleSourceStartEvent,
-  MarbleSourceValueEvent,
   MarbleTimelineBounds,
 } from '@rx-marbles/core';
-import {
-  ClosedMarbleEventToken,
-  EmitableStubMarbleTimeline,
-  GroupEndMarbleEventToken,
-  GroupStartMarbleEventToken,
-  MarbleEventToken,
-  MarbleEventTokenizer,
-  StartMarbleEventToken,
-  ValueMarbleEventToken,
-} from '@rx-marbles/core/testing';
+import { LinearMarbleEventParser } from './event-parser';
+import { GrammarMarbleEventTokenizer } from './event-tokenizer';
+import { EmitableStubMarbleTimeline } from './index';
 
 export interface MarbleOperatorTesterOptions<
   INPUTS extends unknown[],
@@ -68,7 +58,7 @@ export class MarbleOperatorTester<
     [I in keyof INPUTS]: EmitableStubMarbleTimeline<INPUTS[I]>;
   };
   private operator = this.options.operatorFactory.create(this.inputs);
-  private outptuCallback = jest.fn();
+  private outputCallback = jest.fn();
   private subscription?: Cancellable;
 
   constructor(
@@ -79,36 +69,34 @@ export class MarbleOperatorTester<
     this.initOperator();
 
     const inputTokens = Object.keys(inputsEventsStr)
-      .filter((key) => !!inputsEventsStr[key])
-      .map((key) => {
+      .filter((input) => !!inputsEventsStr[input])
+      .map((input) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const inputEventsStr = inputsEventsStr[key]!;
+        const inputEventsStr = inputsEventsStr[input]!;
         const tokens = this.strToTokens(inputEventsStr);
-        return { key, tokens };
+        return { input, tokens, eventsStr: inputEventsStr };
       });
 
-    const maxTokens = Math.max(...inputTokens.map((e) => e.tokens.length));
-    this.updateBounds(maxTokens);
+    this.updateBounds(Math.max(...inputTokens.map((e) => e.tokens.length)));
 
-    inputTokens.forEach((inputEvent) => {
-      const input = this.getInput(inputEvent.key);
-      const events = this.tokensToEvents(inputEvent.tokens);
+    const inputEvents = inputTokens.map((inputToken) => ({
+      input: inputToken.input,
+      events: this.tokensToEvents(inputToken.eventsStr),
+    }));
 
-      if (this.options.logEvents) {
-        console.log(
-          `Input events (${inputEvent.key}) (${events.length})`,
-          events,
-        );
-      }
+    const events = this.groupEventsByTime(inputEvents);
 
-      events.forEach((event) => input.emit(event));
-    });
+    if (this.options.logEvents) {
+      console.log(`Input events (${events.length})`, events);
+    }
+
+    events.forEach((event) => this.getInput(event.input).emit(event.event));
   }
 
   expectOutput(eventsStr: string): void {
     const expectedEvents = this.strToEvents(eventsStr);
     const actualEvents: MarbleSourceEvent[] =
-      this.outptuCallback.mock.calls.map(([event]) => event);
+      this.outputCallback.mock.calls.map(([event]) => event);
 
     if (this.options.logEvents) {
       console.log(`Expected events (${expectedEvents.length})`, expectedEvents);
@@ -133,7 +121,7 @@ export class MarbleOperatorTester<
   }
 
   getOutputCallback(): jest.Mock {
-    return this.outptuCallback;
+    return this.outputCallback;
   }
 
   dispose(): void {
@@ -143,7 +131,7 @@ export class MarbleOperatorTester<
 
   private initOperator() {
     if (!this.subscription) {
-      this.subscription = this.operator.subscribe(this.outptuCallback);
+      this.subscription = this.operator.subscribe(this.outputCallback);
     }
   }
 
@@ -177,46 +165,38 @@ export class MarbleOperatorTester<
   }
 
   private strToEvents(eventsStr: string): MarbleSourceEvent[] {
-    const tokens = Array.from(new MarbleEventTokenizer(eventsStr));
-    return this.tokensToEvents(tokens);
+    return this.tokensToEvents(eventsStr);
   }
 
   private strToTokens(eventsStr: string) {
-    return Array.from(new MarbleEventTokenizer(eventsStr));
+    return Array.from(new GrammarMarbleEventTokenizer(eventsStr));
   }
 
-  private tokensToEvents(tokens: MarbleEventToken[]) {
+  private tokensToEvents(eventsStr: string): MarbleSourceEvent[] {
     const frameTime = this.getFrameTime();
-    let time = 0,
-      isInGroup = false;
+    const eventsTokenizer = new GrammarMarbleEventTokenizer(eventsStr);
+    const eventsParser = new LinearMarbleEventParser(eventsTokenizer, {
+      frameTime,
+    });
+    const events = Array.from(eventsParser.getEvents());
 
-    return tokens
-      .map((token) => {
-        let event: MarbleSourceEvent;
+    return events.filter((event) => event.kind !== MarbleSourceEventKind.Noop);
+  }
 
-        if (token instanceof StartMarbleEventToken) {
-          event = new MarbleSourceStartEvent(time);
-        } else if (token instanceof ClosedMarbleEventToken) {
-          event = new MarbleSourceClosedEvent(time);
-        } else if (token instanceof ValueMarbleEventToken) {
-          event = new MarbleSourceValueEvent(time, token.value);
-        } else {
-          event = new MarbleSourceNoopEvent();
-        }
-
-        if (token instanceof GroupStartMarbleEventToken) {
-          isInGroup = true;
-        } else if (token instanceof GroupEndMarbleEventToken) {
-          isInGroup = false;
-        }
-
-        if (!isInGroup) {
-          time += frameTime;
-        }
-
-        return event;
-      })
-      .filter((event) => event.kind !== MarbleSourceEventKind.Noop);
+  private groupEventsByTime(
+    inputEvents: { input: string; events: MarbleSourceEvent[] }[],
+  ) {
+    return inputEvents
+      .reduce(
+        (allEvents, { input, events }) => [
+          ...allEvents,
+          ...events.map((event) => ({ input, event })),
+        ],
+        [] as { input: string; event: MarbleSourceEvent<unknown> }[],
+      )
+      .sort(({ event: eventA }, { event: eventB }) =>
+        'time' in eventA && 'time' in eventB ? eventA.time - eventB.time : 0,
+      );
   }
 
   private getFrameTime() {

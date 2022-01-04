@@ -1,3 +1,4 @@
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import {
   Cancellable,
   isSourceTimeline,
@@ -9,10 +10,7 @@ import {
   MarbleSourceEventType,
   MarbleTimelineBounds,
 } from '@rx-marbles/core';
-import {
-  EmitableStubMarbleOperator,
-  MarbleOperatorFactory,
-} from '@rx-marbles/core/testing';
+import { EmitableStubMarbleOperator, MarbleOperatorFactory } from './index';
 
 export interface MarbleOperatorFn extends Function {
   (

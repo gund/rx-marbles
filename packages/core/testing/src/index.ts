@@ -5,5 +5,6 @@ export * from '../../src/lib/timeline/timeline.stub';
 
 export * from './operator-tester';
 export * from './event-tokenizer';
+export * from './event-parser';
 export * from './custom-operator';
 export * from './identity-operator';

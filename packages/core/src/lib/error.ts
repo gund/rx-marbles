@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export class MarbleError extends Error {
+export class MarbleError<
+  D extends Record<string, unknown> = Record<string, unknown>,
+> extends Error {
   static text = 'MarbleError';
 
-  constructor(protected messageData?: Record<string, unknown>) {
+  constructor(public messageData?: D) {
     super('');
 
     const ctor = this.constructor as typeof MarbleError;
