@@ -1,51 +1,38 @@
-import { EmitableStubMarbleSource } from '@rx-marbles/core/testing';
 import {
-  MarbleSourceClosedEvent,
-  MarbleSourceStartEvent,
-  MarbleSourceValueEvent,
-} from '../source';
+  MarbleOperatorFactory,
+  MarbleOperatorTester,
+} from '@rx-marbles/core/testing';
+import { MarbleInputs } from '../operator';
 import { MapMarbleOperator } from './map';
 
 describe('MapMarbleOperator', () => {
-  it('should call map function with value inputs', async () => {
-    const callback = jest.fn();
-    const mapFn = jest.fn<string, []>().mockReturnValue('mapped');
-    const input1 = new EmitableStubMarbleSource();
-    const input2 = new EmitableStubMarbleSource();
-    const operator = new MapMarbleOperator(mapFn, { inputs: [input1, input2] });
+  class MapOperatorFactory<I extends unknown[], O>
+    implements MarbleOperatorFactory<I>
+  {
+    constructor(private mapFn: (inputs: I) => O) {}
 
-    const sub = operator.subscribe(callback);
+    create(inputs: MarbleInputs<I>) {
+      return new MapMarbleOperator(this.mapFn, { inputs });
+    }
+  }
 
-    expect(mapFn).not.toHaveBeenCalled();
-
-    input1.emit(new MarbleSourceValueEvent(1, 'a'));
-    await input2.emit(new MarbleSourceValueEvent(1, 'b'));
-
-    expect(mapFn).toHaveBeenNthCalledWith(1, ['a', 'b']);
-    expect(callback).toHaveBeenNthCalledWith(
-      1,
-      new MarbleSourceValueEvent(1, 'mapped'),
+  it('should apply map function to input events', async () => {
+    const operatorFactory = new MapOperatorFactory(
+      ([input1, input2]: [string, string]) => input1 + input2,
     );
+    const mapTester = new MarbleOperatorTester({
+      operatorFactory,
+      inputs: {
+        letters: { name: 'Letters' },
+        numbers: { name: 'Numbers' },
+      },
+    });
 
-    sub.cancel();
-  });
+    await mapTester.emitInputs({
+      letters: '^(a)-(b)-(c)-X',
+      numbers: '^(1)-(2)-(3)-X',
+    });
 
-  it('should NOT call map function with non value inputs', async () => {
-    const callback = jest.fn();
-    const mapFn = jest.fn<string, []>().mockReturnValue('mapped');
-    const input1 = new EmitableStubMarbleSource();
-    const input2 = new EmitableStubMarbleSource();
-    const operator = new MapMarbleOperator(mapFn, { inputs: [input1, input2] });
-
-    const sub = operator.subscribe(callback);
-
-    input1.emit(new MarbleSourceStartEvent(1));
-    await input2.emit(new MarbleSourceClosedEvent(2));
-
-    expect(mapFn).not.toHaveBeenCalled();
-    expect(callback).toHaveBeenNthCalledWith(1, new MarbleSourceStartEvent(1));
-    expect(callback).toHaveBeenNthCalledWith(2, new MarbleSourceClosedEvent(2));
-
-    sub.cancel();
+    mapTester.expectOutput('^(a1)-(b2)-(c3)-X');
   });
 });

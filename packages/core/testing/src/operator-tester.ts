@@ -65,7 +65,9 @@ export class MarbleOperatorTester<
     private options: MarbleOperatorTesterOptions<INPUTS, OPERATOR, META>,
   ) {}
 
-  emitInputs(inputsEventsStr: Partial<TestInputEvents<META>>): void {
+  async emitInputs(
+    inputsEventsStr: Partial<TestInputEvents<META>>,
+  ): Promise<void> {
     this.initOperator();
 
     const inputTokens = Object.keys(inputsEventsStr)
