@@ -12,10 +12,7 @@ describe('MapMarbleOperator', () => {
     const mapFn = jest.fn<string, []>().mockReturnValue('mapped');
     const input1 = new EmitableStubMarbleSource();
     const input2 = new EmitableStubMarbleSource();
-    const operator = new MapMarbleOperator({
-      inputs: [input1, input2],
-      mapFn,
-    });
+    const operator = new MapMarbleOperator(mapFn, { inputs: [input1, input2] });
 
     const sub = operator.subscribe(callback);
 
@@ -38,10 +35,7 @@ describe('MapMarbleOperator', () => {
     const mapFn = jest.fn<string, []>().mockReturnValue('mapped');
     const input1 = new EmitableStubMarbleSource();
     const input2 = new EmitableStubMarbleSource();
-    const operator = new MapMarbleOperator({
-      inputs: [input1, input2],
-      mapFn,
-    });
+    const operator = new MapMarbleOperator(mapFn, { inputs: [input1, input2] });
 
     const sub = operator.subscribe(callback);
 

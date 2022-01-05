@@ -11,18 +11,14 @@ import {
   MarbleSourceValueEvent,
 } from '../source';
 
-export interface MapMarbleOperatorOptions<
-  INPUTS extends unknown[] = MarbleSourceEventType[],
-  OUTPUT = MarbleSourceEventType,
-> extends AbstractMarbleOperatorOptions<INPUTS> {
-  mapFn(inputs: INPUTS): OUTPUT;
-}
-
 export class MapMarbleOperator<
   INPUTS extends unknown[] = MarbleSourceEventType[],
   OUTPUT = MarbleSourceEventType,
 > extends AbstractMarbleOperator<INPUTS, OUTPUT> {
-  constructor(protected override options: MapMarbleOperatorOptions<INPUTS>) {
+  constructor(
+    private mapFn: (inputs: INPUTS) => OUTPUT,
+    options: AbstractMarbleOperatorOptions<INPUTS>,
+  ) {
     super(options);
   }
 
@@ -46,7 +42,7 @@ export class MapMarbleOperator<
           .map((event) => event.time),
       );
 
-      const output = this.options.mapFn(inputs);
+      const output = this.mapFn(inputs);
 
       outputEvents.push(
         new MarbleSourceValueEvent(
