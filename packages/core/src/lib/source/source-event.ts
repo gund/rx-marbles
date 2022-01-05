@@ -48,3 +48,9 @@ export function isMarbleSourceEvent<T>(
 ): obj is MarbleSourceEvent<T> {
   return typeof obj === 'object' && !!obj && 'kind' in obj;
 }
+
+export function isTimeMarbleSourceEvent(
+  event?: MarbleSourceEvent,
+): event is MarbleSourceEvent & { time: number } {
+  return !!event && 'time' in event;
+}
